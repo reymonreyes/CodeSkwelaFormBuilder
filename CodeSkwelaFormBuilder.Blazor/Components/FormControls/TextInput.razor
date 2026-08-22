@@ -1,0 +1,7 @@
+﻿<MudPaper class="pa-2 my-2">
+    <MudTextField T="string" @bind-Value="_label" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
+    <MudTextField T="string" @bind-Value="_value" Variant="Variant.Outlined" />
+</MudPaper>
+@code {
+    private string _label = "Label...", _value;
+}

@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using CodeSkwelaFormBuilder.Blazor.Components.FormControls
 
 <PageTitle>Blazor Form Builder</PageTitle>
 
@@ -12,7 +13,7 @@
         @foreach (var element in formElements)
         {
             <MudStack>
-                @element             
+                @element                
             </MudStack>
         }
     </MudItem>
@@ -30,16 +31,6 @@
     {
         var elementCount = formElements.Count == 0 ? 1 : formElements.Count + 1;
 
-        formElements.Add(renderBuilder =>
-        {
-            renderBuilder.OpenComponent(0, typeof(MudText));
-            renderBuilder.AddAttribute(1, nameof(MudText.ChildContent), (RenderFragment)(builder => builder.AddContent(3, "Label")));
-            renderBuilder.CloseComponent();
-            renderBuilder.OpenComponent(4, typeof(MudTextField<string>));
-            renderBuilder.CloseComponent();
-        });
-
-        //my first attempt        
-        //formElements.Add(@<MudTextField T="string" Label="Label" />);
+        formElements.Add(@<TextInput/>);        
     }
 }
