@@ -1,7 +1,33 @@
-﻿<MudPaper class="pa-2 my-2">
-    <MudTextField T="string" @bind-Value="_label" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
-    <MudTextField T="string" @bind-Value="_value" Variant="Variant.Outlined" />
+﻿@using System.Text.Json
+@using CodeSkwelaFormBuilder.Blazor.Shared
+@using CodeSkwelaFormBuilder.Blazor.Shared.Models
+@implements IFormControlSerializer
+
+<MudPaper class="pa-2 my-2">
+    <MudTextField T="string" @bind-Value="Label" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
+    <MudTextField T="string" @bind-Value="Value" Variant="Variant.Outlined" />
 </MudPaper>
 @code {
     private string _label = "Label...", _value;
+
+    [Parameter]
+    public string Label { get; set; }
+    [Parameter]
+    public string Value { get; set; }
+
+    public string Serialize()
+    {
+        var result = JsonSerializer.Serialize(new Dictionary<string, object>
+        {
+            {"Label", Label },
+            {"Value", Value }
+        });
+
+        return result;
+    }
+
+    public static Dictionary<string, object> Deserialize(string serializedParameters)
+    {
+        return new Dictionary<string, object>();
+    }
 }

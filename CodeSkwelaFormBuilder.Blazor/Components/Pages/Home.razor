@@ -1,21 +1,41 @@
 ﻿@page "/"
+@using System.Text.Json
 @using CodeSkwelaFormBuilder.Blazor.Components.FormControls
+@using CodeSkwelaFormBuilder.Blazor.Shared
+@using CodeSkwelaFormBuilder.Blazor.Shared.Models
+@using ViewModels = CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
+
+@inject IDatabase Database
 
 <PageTitle>Blazor Form Builder</PageTitle>
 
 <MudGrid>
     <MudItem sm="3" md="3" lg="3">
+        <MudPaper Class="my-1">
+            <MudToolBar>
+                <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Add" />
+                <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.Save" />
+            </MudToolBar>
+        </MudPaper>
+        <MudPaper>
+            <MudList T="ViewModels.Form" @bind-SelectedValue="_form">
+                @foreach (var form in _forms)
+                {
+                    <MudListItem Value="form" Text="@form.Name" />
+                }
+            </MudList>
+        </MudPaper>
         <MudList T="string">
             <MudListItem Text="Textbox" Icon="@Icons.Material.Filled.Input" OnClick="AddTextbox" />
         </MudList>
     </MudItem>
     <MudItem sm="9" md="9" lg="9">
-        @foreach (var element in formElements)
+        @foreach (var control in _form.Controls)
         {
-            <MudStack>
-                @element                
+            <MudStack>                
+                <DynamicComponent Type="@Type.GetType(control.Type)" Parameters="control.Parameters" @ref="control.ControlReference" />
             </MudStack>
-        }
+        }        
     </MudItem>
 </MudGrid>
 @{
@@ -24,13 +44,65 @@
 
 @code{
 
-    private List<RenderFragment> formElements = new List<RenderFragment>();
+    private List<Type> formElements = new List<Type>();
+    private List<ViewModels.Form> _forms = new List<ViewModels.Form>();
+    private ViewModels.Form? _form;
 
+    protected override void OnInitialized()
+    {
+        AddForm();
+    }
 
     private void AddTextbox()
-    {
-        var elementCount = formElements.Count == 0 ? 1 : formElements.Count + 1;
+    {       
+        _form.Controls.Add(new ViewModels.FormControl
+        {
+            Id = Guid.NewGuid(),
+            FormId = _form.Id,
+            Type = "CodeSkwelaFormBuilder.Blazor.Components.FormControls.TextInput",
+            Parameters = new Dictionary<string, object>{
+                { "Label", "Label here..." },
+                { "Value", "some value" }
+            }
+        });
+    }
 
-        formElements.Add(@<TextInput/>);        
+    private void SaveForm()
+    {
+        var allForms = Database.GetAllForms();
+
+        var formData = new Form
+        {
+            Id = Guid.NewGuid(),
+            Name = _form.Name,
+            Controls = new List<FormControl>()
+        };
+
+        foreach (var control in _form.Controls)
+        {
+            var formControlData = new FormControl
+            {
+                Id = Guid.NewGuid(),
+                FormId = formData.Id,
+                Type = control.Type,
+                Parameters = (control.ControlReference.Instance as IFormControlSerializer).Serialize()
+            };
+
+            formData.Controls.Add(formControlData);
+        }
+
+        Database.Add(formData);
+    }
+
+    private void AddForm()
+    {
+        var name = $"New Form {_forms.Count + 1}";
+        _form = new ViewModels.Form
+        {
+            Id = Guid.NewGuid(),
+            Name = name
+        };
+
+        _forms.Add(_form);
     }
 }

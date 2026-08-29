@@ -1,4 +1,5 @@
 using CodeSkwelaFormBuilder.Blazor.Components;
+using CodeSkwelaFormBuilder.Blazor.Shared;
 using MudBlazor.Services;
 
 namespace CodeSkwelaFormBuilder.Blazor
@@ -15,6 +16,8 @@ namespace CodeSkwelaFormBuilder.Blazor
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+
+            builder.Services.AddSingleton<IDatabase, LocalDatabase>();
 
             var app = builder.Build();
 

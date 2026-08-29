@@ -1,0 +1,10 @@
+﻿using CodeSkwelaFormBuilder.Blazor.Shared.Models;
+
+namespace CodeSkwelaFormBuilder.Blazor.Shared
+{
+    public interface IDatabase
+    {
+        void Add(Form form);
+        List<Form> GetAllForms();
+    }
+}
