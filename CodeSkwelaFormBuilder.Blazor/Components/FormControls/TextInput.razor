@@ -28,6 +28,16 @@
 
     public static Dictionary<string, object> Deserialize(string serializedParameters)
     {
-        return new Dictionary<string, object>();
+        var result = JsonSerializer.Deserialize<Dictionary<string, object>>(serializedParameters);
+
+        foreach (var key in result.Keys.ToList())
+        {
+            if (result[key] is JsonElement jsonElement)
+            {
+                result[key] = jsonElement.GetString();
+            }
+        }
+
+        return result;
     }
 }

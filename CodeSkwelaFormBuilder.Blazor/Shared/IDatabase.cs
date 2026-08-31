@@ -6,5 +6,7 @@ namespace CodeSkwelaFormBuilder.Blazor.Shared
     {
         void Add(Form form);
         List<Form> GetAllForms();
+        Form GetFormById(Guid id);
+        void Update(Form formData);
     }
 }
