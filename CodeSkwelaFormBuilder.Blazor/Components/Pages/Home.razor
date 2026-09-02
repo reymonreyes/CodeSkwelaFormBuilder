@@ -48,7 +48,6 @@
     private ViewModels.Form? _formVM;
     private Models.Form? _formData;
     private List<Models.Form> _formsList = new List<Models.Form>();
-    private List<DynamicComponent> _formControlReferences = new List<DynamicComponent>();
 
     protected override void OnInitialized()
     {
@@ -80,7 +79,6 @@
         formControl.Parameters.Add("OnParametersChanged", EventCallback.Factory.Create<ViewModels.TextInputParametersEventArgs>(this, (eventArgs) => { formControl.UpdateParameters(eventArgs.Parameters); }));
 
         _formVM.Controls.Add(formControl);
-        _formControlReferences.Add(new DynamicComponent());
     }
 
     private void SaveForm()
