@@ -1,11 +1,12 @@
 ﻿@using System.Text.Json
 @using CodeSkwelaFormBuilder.Blazor.Shared
 @using CodeSkwelaFormBuilder.Blazor.Shared.Models
+@using CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
 @implements IFormControlSerializer
 
 <MudPaper class="pa-2 my-2">
-    <MudTextField T="string" @bind-Value="Label" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
-    <MudTextField T="string" @bind-Value="Value" Variant="Variant.Outlined" />
+    <MudTextField T="string" Value="Label" ValueChanged="LabelParameterChanged" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
+    <MudTextField T="string" Value="Value" ValueChanged="ValueParameterChanged" Variant="Variant.Outlined" />
 </MudPaper>
 @code {
     private string _label = "Label...", _value;
@@ -14,6 +15,8 @@
     public string Label { get; set; }
     [Parameter]
     public string Value { get; set; }
+    [Parameter]
+    public EventCallback<TextInputParametersEventArgs> OnParametersChanged { get; set; }
 
     public string Serialize()
     {
@@ -39,5 +42,33 @@
         }
 
         return result;
+    }
+
+    private void LabelParameterChanged(string label)
+    {
+        Label = label;
+
+        OnParametersChanged.InvokeAsync(new TextInputParametersEventArgs
+        {
+            Parameters = new Dictionary<string, object>
+            {
+                { "Label", label },
+                { "Value", Value }
+            }
+        });
+    }
+
+    private void ValueParameterChanged(string value)
+    {
+        Value = value;
+
+        OnParametersChanged.InvokeAsync(new TextInputParametersEventArgs
+        {
+            Parameters = new Dictionary<string, object>
+            {
+                { "Label", Label },
+                { "Value", Value }
+            }
+        });
     }
 }
