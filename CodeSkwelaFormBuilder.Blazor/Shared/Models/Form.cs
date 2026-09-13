@@ -12,6 +12,6 @@
         public Guid Id { get; set; }
         public Guid FormId { get; set; }
         public string Type { get; set; }
-        public string Parameters { get; set; }
+        public string DataParameters { get; set; }
     }
 }

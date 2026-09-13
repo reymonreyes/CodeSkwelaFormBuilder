@@ -1,5 +1,6 @@
 using CodeSkwelaFormBuilder.Blazor.Components;
 using CodeSkwelaFormBuilder.Blazor.Shared;
+using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 
 namespace CodeSkwelaFormBuilder.Blazor
@@ -17,7 +18,8 @@ namespace CodeSkwelaFormBuilder.Blazor
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
-            builder.Services.AddSingleton<IDatabase, LocalDatabase>();
+            //builder.Services.AddSingleton<IDatabase, LocalDatabase>();
+            builder.Services.AddDbContextFactory<Data.ApplicationDbContext>();
 
             var app = builder.Build();
 

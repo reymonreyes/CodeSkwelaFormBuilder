@@ -1,43 +1,26 @@
 ﻿@page "/"
-@using System.Text.Json
 @using CodeSkwelaFormBuilder.Blazor.Components.FormControls
-@using CodeSkwelaFormBuilder.Blazor.Shared
+@using CodeSkwelaFormBuilder.Blazor.Data
+@using Microsoft.EntityFrameworkCore
 @using Models = CodeSkwelaFormBuilder.Blazor.Shared.Models
 @using ViewModels = CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
-
-@inject IDatabase Database
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
 <PageTitle>Blazor Form Builder</PageTitle>
 
 <MudGrid>
-    <MudItem sm="3" md="3" lg="3">
-        <MudPaper Class="my-1">
+    <MudItem sm="12" md="12" lg="12">
+        <MudPaper Class="my-1" Outlined="true">
             <MudToolBar>
                 <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Add" />
+                <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.ListAlt" />
                 <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.Save" />
+                <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Delete" />
             </MudToolBar>
-        </MudPaper>
-        <MudPaper>
-            <MudList T="Models.Form" SelectedValue="_formData" SelectedValueChanged="LoadForm">
-                @foreach (var form in _formsList)
-                {
-                    <MudListItem Value="form" Text="@form.Name" />
-                }
-            </MudList>
-        </MudPaper>
-        <MudList T="string">
-            <MudListItem Text="Textbox" Icon="@Icons.Material.Filled.Input" OnClick="AddTextbox" />
-        </MudList>
+        </MudPaper>        
     </MudItem>
-    <MudItem sm="9" md="9" lg="9">
-        @if(_formVM != null && _formVM.Controls != null && _formVM.Controls.Count > 0){
-            @foreach (var control in _formVM.Controls)
-            {
-                <MudStack>                
-                    <DynamicComponent Type="@Type.GetType(control.Type)" Parameters="control.Parameters"/>
-                </MudStack>
-            }
-        }
+    <MudItem sm="12" md="12" lg="12">
+        <MainForm FormData="_currentFormData" />        
     </MudItem>
 </MudGrid>
 
@@ -45,9 +28,8 @@
 
     private List<Type> formElements = new List<Type>();
     private List<ViewModels.Form> _forms = new List<ViewModels.Form>();
-    private ViewModels.Form? _formVM;
-    private Models.Form? _formData;
     private List<Models.Form> _formsList = new List<Models.Form>();
+    private Models.Form _currentFormData;
 
     protected override void OnInitialized()
     {
@@ -59,89 +41,26 @@
 
     private void GetFormsList()
     {
-        _formsList = Database.GetAllForms();
-    }
-
-    private void AddTextbox()
-    {
-        var formControl = new ViewModels.FormControl
-        {
-            Id = Guid.NewGuid(),
-            FormId = _formVM.Id,
-            Type = "CodeSkwelaFormBuilder.Blazor.Components.FormControls.TextInput",
-            Parameters = new Dictionary<string, object>{
-            { "Label", "Label here..." },
-            { "Value", "some value" }
-        },
-            ParameterNames = new string[] { "Label", "Value" }
-        };
-
-        formControl.Parameters.Add("OnParametersChanged", EventCallback.Factory.Create<ViewModels.TextInputParametersEventArgs>(this, (eventArgs) => { formControl.UpdateParameters(eventArgs.Parameters); }));
-
-        _formVM.Controls.Add(formControl);
-    }
+        //_formsList = Database.GetAllForms();
+    }    
 
     private void SaveForm()
     {
-        var allForms = Database.GetAllForms();        
-
-        var formData = new Models.Form
+        if (_currentFormData.Id == Guid.Empty)
         {
-            Id = Guid.Empty,
-            Name = _formVM.Name,
-            Controls = new List<Models.FormControl>()
-        };
-
-        if (_formVM.Id == Guid.Empty)
-        {
-
-            foreach (var control in _formVM.Controls)
+            using (var dbContext = DbContextFactory.CreateDbContext())
             {
-                var formControlData = new Models.FormControl
-                {
-                    Id = Guid.Empty,
-                    FormId = formData.Id,
-                    Type = control.Type,
-                    Parameters = control.Serialize()
-                };
-
-                formData.Controls.Add(formControlData);
+                dbContext.Forms.Add(_currentFormData);
+                dbContext.SaveChanges();
             }
-
-            Database.Add(formData);
-
-            _formVM.Id = formData.Id;
-
-            for (var x = 0; x < _formVM.Controls.Count; x++)
-            {
-                _formVM.Controls[x].Id = formData.Controls[x].Id;
-                _formVM.Controls[x].FormId = formData.Controls[x].FormId;
-            }
-
-            var newForm = _formsList.FirstOrDefault(x => x.Id == Guid.Empty);
-            if (newForm != null)
-                newForm.Id = formData.Id;
         }
         else
         {
-            formData.Id = _formVM.Id;
-            formData.Name = _formVM.Name;
-
-            foreach (var control in _formVM.Controls)
+            using(var dbContext = DbContextFactory.CreateDbContext())
             {
-                var formControlData = new Models.FormControl
-
-                {
-                    Id = Guid.Empty,
-                    FormId = formData.Id,
-                    Type = control.Type,
-                    Parameters = control.Serialize()
-                };
-
-                formData.Controls.Add(formControlData);
+                dbContext.Forms.Update(_currentFormData);
+                dbContext.SaveChanges();
             }
-
-            Database.Update(formData);
         }
 
     }
@@ -149,62 +68,11 @@
     private void AddForm()
     {
         var name = $"New Form {_forms.Count + 1}";
-        _formVM = new ViewModels.Form
-        {
-            Id = Guid.Empty,
-            Name = name,
-            Controls = new List<ViewModels.FormControl>()
-        };
-
-        _forms.Add(_formVM);
-
-        _formData = new Models.Form
+        _currentFormData = new Models.Form
         {
             Id = Guid.Empty,
             Name = name,
             Controls = new List<Models.FormControl>()
         };
-
-        _formsList.Add(_formData);
-    }
-
-    private void LoadForm(Models.Form form)
-    {
-        var formData = Database.GetFormById(form.Id);
-
-        if(formData == null)
-            return;
-
-        _formVM = new ViewModels.Form
-        {
-            Id = formData.Id,
-            Name = formData.Name,
-            Controls = null
-        };
-
-        var tempForm = new ViewModels.Form
-        {
-            Id = formData.Id,
-            Name = formData.Name,
-            Controls = new List<ViewModels.FormControl>()
-        };
-
-        foreach (var control in formData.Controls)
-        {
-            var formControl = new ViewModels.FormControl
-            {
-                Id = control.Id,
-                FormId = control.FormId,
-                Type = control.Type,
-                Parameters = TextInput.Deserialize(control.Parameters),
-                ParameterNames = new string[] { "Label", "Value" }
-            };
-
-            formControl.Parameters.Add("OnParametersChanged", EventCallback.Factory.Create<ViewModels.TextInputParametersEventArgs>(this, (eventArgs) => { formControl.UpdateParameters(eventArgs.Parameters); }));
-
-            tempForm.Controls.Add(formControl);
-        }
-
-        _formVM = tempForm;
-    }
+    }    
 }

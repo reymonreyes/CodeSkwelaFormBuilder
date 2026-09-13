@@ -1,0 +1,80 @@
+﻿@using System.Text.Json
+@using Models = CodeSkwelaFormBuilder.Blazor.Shared.Models
+@using VMs = CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
+
+<MudGrid>
+    <MudItem sm="3" md="3" lg="3" Class="">
+        <MudPaper Class="pa-2" Square="true">
+            <MudTextField T="string" @bind-Value="FormData?.Name" Label="Form Name" ShrinkLabel="true" Variant="Variant.Text" FullWidth="true" Class="" />
+        </MudPaper>
+        <MudPaper class="pa-2 mt-1" Square="true">
+            <MudList T="string">
+                <MudListItem Text="Textbox" Icon="@Icons.Material.Filled.Input" OnClick="AddTextbox" />
+            </MudList>
+        </MudPaper>
+    </MudItem>
+    <MudItem sm="9" md="9" lg="9">
+        @if (_formVM != null && _formVM.Controls != null && _formVM.Controls.Count > 0)
+        {
+            @foreach (var control in _formVM.Controls)
+            {
+                <MudStack>
+                    <DynamicComponent Type="@Type.GetType(control.Type)" Parameters="control.Parameters" />
+                </MudStack>
+            }
+        }        
+    </MudItem>
+</MudGrid>
+
+@code {
+    private VMs.Form? _formVM;
+   
+    [Parameter]
+    public Models.Form? FormData { get; set; }
+
+    [Parameter]
+    public EventCallback<Models.Form> FormDataChanged { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if(FormData != null)
+        {
+            _formVM = new VMs.Form
+            {
+                Id = FormData.Id,
+                Name = FormData.Name
+            };            
+        }
+    }
+    
+    private async Task AddTextbox()
+    {
+        var controlId = Guid.NewGuid();
+
+        var formControlData = new Models.FormControl
+        {
+            Id = controlId,
+            FormId = FormData.Id,
+            Type = "CodeSkwelaFormBuilder.Blazor.Components.FormControls.TextInput",
+            DataParameters = JsonSerializer.Serialize(new Dictionary<string, object>
+            {
+                { "Id", controlId },
+                { "Label", "Label..." },
+                { "TextValue", "Default value..." }
+            })
+        };
+
+        var formControl = new VMs.FormControl
+        {
+            Id = formControlData.Id,
+            FormId = FormData.Id,
+            Type = formControlData.Type,
+            Parameters = new Dictionary<string, object>{                
+                { "FormControlData", formControlData }
+            },            
+        };
+        
+        FormData?.Controls.Add(formControlData);        
+        _formVM?.Controls.Add(formControl);
+    }    
+}

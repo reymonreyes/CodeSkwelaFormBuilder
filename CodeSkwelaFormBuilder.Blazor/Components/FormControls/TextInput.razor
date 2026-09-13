@@ -1,74 +1,47 @@
 ﻿@using System.Text.Json
-@using CodeSkwelaFormBuilder.Blazor.Shared
-@using CodeSkwelaFormBuilder.Blazor.Shared.Models
-@using CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
-@implements IFormControlSerializer
+@using Models = CodeSkwelaFormBuilder.Blazor.Shared.Models
 
 <MudPaper class="pa-2 my-2">
-    <MudTextField T="string" Value="Label" ValueChanged="LabelParameterChanged" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
-    <MudTextField T="string" Value="Value" ValueChanged="ValueParameterChanged" Variant="Variant.Outlined" />
+    <MudTextField T="string" Value="_label" ValueChanged="LabelChanged" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
+    <MudTextField T="string" Value="_textValue" ValueChanged="TextValueChanged" Variant="Variant.Outlined" />
 </MudPaper>
 @code {
-    private string _label = "Label...", _value;
+    private string _label = "Label...", _textValue = "Default value...";
 
     [Parameter]
-    public string Label { get; set; }
-    [Parameter]
-    public string Value { get; set; }
-    [Parameter]
-    public EventCallback<TextInputParametersEventArgs> OnParametersChanged { get; set; }
-
-    public string Serialize()
+    public Models.FormControl? FormControlData { get; set; }
+    
+    protected override void OnParametersSet()
     {
-        var result = JsonSerializer.Serialize(new Dictionary<string, object>
+        var data = JsonSerializer.Deserialize<Dictionary<string, object>>(FormControlData?.DataParameters ?? "{}");
+        _label = data.ContainsKey("Label") ? data["Label"]?.ToString() ?? "Label..." : "Label...";
+        _textValue = data.ContainsKey("TextValue") ? data["TextValue"]?.ToString() ?? "" : "";
+    }
+
+    private async Task<string> Serialize(string label, string textValue)
+    {
+        using var stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync(stream, new Dictionary<string, object>
         {
-            {"Label", Label },
-            {"Value", Value }
+            {"Label", label },
+            {"TextValue", textValue }
         });
+        stream.Position = 0;
+        using var reader = new StreamReader(stream);
+        var result = await reader.ReadToEndAsync();
 
         return result;
-    }
-
-    public static Dictionary<string, object> Deserialize(string serializedParameters)
+    }   
+    
+    private async Task LabelChanged(string label)
     {
-        var result = JsonSerializer.Deserialize<Dictionary<string, object>>(serializedParameters);
-
-        foreach (var key in result.Keys.ToList())
-        {
-            if (result[key] is JsonElement jsonElement)
-            {
-                result[key] = jsonElement.GetString();
-            }
-        }
-
-        return result;
+        _label = label;
+        FormControlData?.DataParameters = await Serialize(_label, _textValue);
     }
-
-    private void LabelParameterChanged(string label)
+    
+    private async Task TextValueChanged(string value)
     {
-        Label = label;
-
-        OnParametersChanged.InvokeAsync(new TextInputParametersEventArgs
-        {
-            Parameters = new Dictionary<string, object>
-            {
-                { "Label", label },
-                { "Value", Value }
-            }
-        });
-    }
-
-    private void ValueParameterChanged(string value)
-    {
-        Value = value;
-
-        OnParametersChanged.InvokeAsync(new TextInputParametersEventArgs
-        {
-            Parameters = new Dictionary<string, object>
-            {
-                { "Label", Label },
-                { "Value", Value }
-            }
-        });
+        _textValue = value;
+        FormControlData?.DataParameters = await Serialize(_label, _textValue);
     }
 }

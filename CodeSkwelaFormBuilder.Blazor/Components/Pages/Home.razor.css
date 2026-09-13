@@ -1,0 +1,7 @@
+﻿::deep .highlight-current-form {
+    background-color: #43A047;
+}
+
+::deep .highlight-current-form input {
+    color: white;
+}

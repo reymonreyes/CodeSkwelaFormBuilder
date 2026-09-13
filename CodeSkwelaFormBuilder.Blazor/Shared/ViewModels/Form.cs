@@ -18,7 +18,8 @@ namespace CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
         public Guid FormId { get; set; }
         public string Type { get; set; }
         public Dictionary<string, object> Parameters { get; set; }
-        public string[] ParameterNames { get; set; }
+        public string[] DataParameterNames { get; set; }
+        public Models.FormControl Data { get; set; }
 
         public static Dictionary<string, object> Deserialize(string serializedParameters)
         {
@@ -27,7 +28,7 @@ namespace CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
 
         public string Serialize()
         {
-            var dataParameters = Parameters.Where(x => ParameterNames.Contains(x.Key)).ToDictionary(x => x.Key, x => x.Value);
+            var dataParameters = Parameters.Where(x => DataParameterNames.Contains(x.Key)).ToDictionary(x => x.Key, x => x.Value);
             var result = JsonSerializer.Serialize(dataParameters);
 
             return result;
