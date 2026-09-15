@@ -5,6 +5,8 @@
 @using Models = CodeSkwelaFormBuilder.Blazor.Shared.Models
 @using ViewModels = CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
 
 <PageTitle>Blazor Form Builder</PageTitle>
 
@@ -12,37 +14,81 @@
     <MudItem sm="12" md="12" lg="12">
         <MudPaper Class="my-1" Outlined="true">
             <MudToolBar>
-                <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Add" />
-                <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.ListAlt" />
-                <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.Save" />
-                <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Delete" />
+                <MudTooltip Text="Add a new form">
+                    <MudIconButton OnClick="AddForm" Icon="@Icons.Material.Outlined.Add" />
+                </MudTooltip>
+                <MudTooltip Text="Load a form">
+                    <MudIconButton OnClick="LoadForm" Icon="@Icons.Material.Outlined.ListAlt" />
+                </MudTooltip>
+                <MudTooltip Text="Save the current form">
+                    <MudIconButton OnClick="SaveForm" Icon="@Icons.Material.Outlined.Save" Disabled="_currentFormData == null" />
+                </MudTooltip>
+                <MudTooltip Text="Delete the current form">
+                    <MudIconButton OnClick="DeleteForm" Icon="@Icons.Material.Outlined.Delete" Disabled="_currentFormData == null || _currentFormData.Id == Guid.Empty" />
+                </MudTooltip>
             </MudToolBar>
         </MudPaper>        
     </MudItem>
     <MudItem sm="12" md="12" lg="12">
-        <MainForm FormData="_currentFormData" />        
+        @if(_currentFormData != null)
+        {
+            <MainForm FormData="_currentFormData" />
+        }
     </MudItem>
 </MudGrid>
+<MudOverlay @bind-Visible="_isLoadingForms" DarkBackground AutoClose="false">
+    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+    @if (!string.IsNullOrWhiteSpace(_loadingMessage))
+    {
+        <MudText>@_loadingMessage</MudText>        
+    }
+</MudOverlay>
+<MudMessageBox @ref="_formsListMessageBox">
+    <TitleContent>Load Form</TitleContent>
+    <MessageContent>
+        @if (_formsList.Count == 0)
+        {
+            <MudText>No records.</MudText>
+        }
+        else
+        {
+            <MudText>Please select a form from the list below:</MudText>
+            <MudList T="Guid" @bind-SelectedValue="_selectedFormId">
+                @foreach(var form in _formsList)
+                {
+                    <MudListItem Text="@form.Name" Value="@form.Id" />
+                }
+            </MudList>
+        }
+    </MessageContent>
+    <YesButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary">Load</MudButton>
+    </YesButton>
+    <CancelButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Secondary">Cancel</MudButton>
+    </CancelButton>
+</MudMessageBox>
 
 @code{
 
     private List<Type> formElements = new List<Type>();
     private List<ViewModels.Form> _forms = new List<ViewModels.Form>();
     private List<Models.Form> _formsList = new List<Models.Form>();
-    private Models.Form _currentFormData;
+    private Models.Form _currentFormData = null;
+    private MudMessageBox _formsListMessageBox;
+    private bool _isLoadingForms = false;
+    private Guid _selectedFormId;
+    private string _loadingMessage = "";
 
     protected override void OnInitialized()
     {
-        GetFormsList();
-
-        if (_formsList.Count == 0)
-            AddForm();
+        using (var context = DbContextFactory.CreateDbContext())
+        {
+            var formsCount = context.Forms.Count();
+            if (formsCount == 0)
+                AddForm();
+        }
     }
-
-    private void GetFormsList()
-    {
-        //_formsList = Database.GetAllForms();
-    }    
 
     private void SaveForm()
     {
@@ -58,11 +104,18 @@
         {
             using(var dbContext = DbContextFactory.CreateDbContext())
             {
-                dbContext.Forms.Update(_currentFormData);
-                dbContext.SaveChanges();
+                var existingForm = dbContext.Forms.Include(f => f.Controls).FirstOrDefault(f => f.Id == _currentFormData.Id);
+                if (existingForm != null)
+                {
+                    existingForm.Name = _currentFormData.Name;
+                    existingForm.Controls = _currentFormData.Controls;
+                };
+                
+                dbContext.SaveChanges();                
             }
         }
 
+        Snackbar.Add("Form saved successfully.", Severity.Success);
     }
 
     private void AddForm()
@@ -74,5 +127,63 @@
             Name = name,
             Controls = new List<Models.FormControl>()
         };
-    }    
+    }
+
+    private async Task LoadForm()
+    {
+        _isLoadingForms = true;
+        using (var dbContext = DbContextFactory.CreateDbContext())
+        {
+            _formsList = await dbContext.Forms.AsNoTracking().Select(x => new Models.Form
+            {
+                Id = x.Id,
+                Name = x.Name
+            }).ToListAsync();
+        }
+        _isLoadingForms = false;
+        bool? confirmed = await _formsListMessageBox.ShowAsync();
+
+        if (confirmed == true && _selectedFormId != Guid.Empty)
+        {
+            _isLoadingForms = true;        
+            using (var dbContext = DbContextFactory.CreateDbContext())
+            {
+                _currentFormData = await dbContext.Forms.AsNoTracking().Include(f => f.Controls).FirstOrDefaultAsync(f => f.Id == _selectedFormId);
+            }
+            _isLoadingForms = false;
+        }
+    }
+
+    private async Task DeleteForm()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete",
+            (MarkupString)$"Are you sure you want to delete this form?<br/><b>{_currentFormData.Name}</b>",
+            yesText: "OK",
+            cancelText: "Cancel"
+        );
+
+        if(confirmed == true)
+        {
+            _isLoadingForms = true;
+            _loadingMessage = "Deleting form...";
+            StateHasChanged();
+            await Task.Delay(3000);
+            
+            using (var dbContext = DbContextFactory.CreateDbContext())
+            {
+                var formToDelete = await dbContext.Forms.FirstOrDefaultAsync(f => f.Id == _currentFormData.Id);
+                if (formToDelete != null)
+                {
+                    dbContext.Forms.Remove(formToDelete);
+                    await dbContext.SaveChangesAsync();
+                    _currentFormData = null;
+                }
+            }
+            
+            _isLoadingForms = false;
+            _loadingMessage = "";
+            Snackbar.Add("Form deleted", Severity.Normal);
+        }
+    }
 }

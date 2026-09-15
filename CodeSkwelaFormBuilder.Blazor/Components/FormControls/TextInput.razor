@@ -1,7 +1,10 @@
 ﻿@using System.Text.Json
 @using Models = CodeSkwelaFormBuilder.Blazor.Shared.Models
 
-<MudPaper class="pa-2 my-2">
+<MudPaper Class="px-2 pb-2 pt-0 my-2">
+    <MudPaper Elevation="0" Class="d-flex justify-end">
+        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Medium" OnClick="Remove" />
+    </MudPaper>
     <MudTextField T="string" Value="_label" ValueChanged="LabelChanged" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Edit" class="pb-2" />
     <MudTextField T="string" Value="_textValue" ValueChanged="TextValueChanged" Variant="Variant.Outlined" />
 </MudPaper>
@@ -10,9 +13,13 @@
 
     [Parameter]
     public Models.FormControl? FormControlData { get; set; }
-    
+    [Parameter]
+    public Guid? ControlId { get; set; }
+    [Parameter]
+    public EventCallback<Models.TextInputParametersEventArgs> OnControlRemoved { get; set; }
+
     protected override void OnParametersSet()
-    {
+    {        
         var data = JsonSerializer.Deserialize<Dictionary<string, object>>(FormControlData?.DataParameters ?? "{}");
         _label = data.ContainsKey("Label") ? data["Label"]?.ToString() ?? "Label..." : "Label...";
         _textValue = data.ContainsKey("TextValue") ? data["TextValue"]?.ToString() ?? "" : "";
@@ -32,16 +39,21 @@
 
         return result;
     }   
-    
+
     private async Task LabelChanged(string label)
     {
         _label = label;
         FormControlData?.DataParameters = await Serialize(_label, _textValue);
     }
-    
+
     private async Task TextValueChanged(string value)
     {
         _textValue = value;
         FormControlData?.DataParameters = await Serialize(_label, _textValue);
+    }
+
+    private async Task Remove()
+    {
+        await OnControlRemoved.InvokeAsync(new Models.TextInputParametersEventArgs { ControlData = FormControlData, ControlId = ControlId ?? FormControlData.Id });
     }
 }

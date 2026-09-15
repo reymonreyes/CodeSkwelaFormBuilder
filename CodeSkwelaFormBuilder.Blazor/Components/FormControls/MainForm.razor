@@ -28,32 +28,54 @@
 
 @code {
     private VMs.Form? _formVM;
-   
+
     [Parameter]
     public Models.Form? FormData { get; set; }
 
     [Parameter]
     public EventCallback<Models.Form> FormDataChanged { get; set; }
-
-    protected override void OnInitialized()
+    
+    protected override void OnParametersSet()
     {
-        if(FormData != null)
+        if (FormData != null)
         {
             _formVM = new VMs.Form
             {
                 Id = FormData.Id,
-                Name = FormData.Name
-            };            
+                Name = FormData.Name,
+                Controls = FormData.Controls?.Select(controlData => new VMs.FormControl
+                {
+                    Id = controlData.Id,
+                    FormId = controlData.FormId,
+                    ControlId = controlData.Id,
+                    Type = controlData.Type,
+                    Parameters = new Dictionary<string, object>
+                    {
+                        { "FormControlData", controlData },
+                        { "OnControlRemoved", EventCallback.Factory.Create<Models.TextInputParametersEventArgs>(this, async (args) =>
+                            {
+                                if (args.ControlData != null)
+                                {
+                                    FormData?.Controls.Remove(args.ControlData);
+                                    var formVM = _formVM.Controls.FirstOrDefault(fc => fc.ControlId == args.ControlId);
+                                    if(formVM != null)
+                                        _formVM.Controls.Remove(formVM);
+                                }
+                            })
+                        }
+                    }
+                }).ToList() ?? new List<VMs.FormControl>()
+            };
         }
     }
-    
+
     private async Task AddTextbox()
     {
         var controlId = Guid.NewGuid();
 
         var formControlData = new Models.FormControl
         {
-            Id = controlId,
+            Id = Guid.Empty,
             FormId = FormData.Id,
             Type = "CodeSkwelaFormBuilder.Blazor.Components.FormControls.TextInput",
             DataParameters = JsonSerializer.Serialize(new Dictionary<string, object>
@@ -63,16 +85,29 @@
                 { "TextValue", "Default value..." }
             })
         };
-
+        
         var formControl = new VMs.FormControl
         {
             Id = formControlData.Id,
+            ControlId = controlId,
             FormId = FormData.Id,
             Type = formControlData.Type,
-            Parameters = new Dictionary<string, object>{                
-                { "FormControlData", formControlData }
-            },            
+            Parameters = new Dictionary<string, object>{
+                { "FormControlData", formControlData },
+                { "ControlId", controlId }
+            }
         };
+
+        formControl.Parameters["OnControlRemoved"] = EventCallback.Factory.Create<Models.TextInputParametersEventArgs>(this, async (args) =>
+        {
+            if (args.ControlData != null)
+            {
+                FormData?.Controls.Remove(args.ControlData);
+                var formVM = _formVM.Controls.FirstOrDefault(fc => fc.ControlId == args.ControlId);
+                if (formVM != null)
+                    _formVM.Controls.Remove(formVM);
+            }
+        });
         
         FormData?.Controls.Add(formControlData);        
         _formVM?.Controls.Add(formControl);

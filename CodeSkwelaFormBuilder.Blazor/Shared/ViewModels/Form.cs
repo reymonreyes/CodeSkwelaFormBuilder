@@ -15,6 +15,7 @@ namespace CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
     public class FormControl : IFormControlSerializer
     {
         public Guid Id { get; set; }
+        public Guid? ControlId { get; set; }
         public Guid FormId { get; set; }
         public string Type { get; set; }
         public Dictionary<string, object> Parameters { get; set; }
@@ -32,11 +33,6 @@ namespace CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
             var result = JsonSerializer.Serialize(dataParameters);
 
             return result;
-        }
-
-        public void UpdateParameters(Dictionary<string, object> newParameters)
-        {
-            this.Parameters = newParameters;
         }
     }
 }

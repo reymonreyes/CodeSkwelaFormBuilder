@@ -1,8 +1,10 @@
-﻿namespace CodeSkwelaFormBuilder.Blazor.Shared.ViewModels
+﻿using CodeSkwelaFormBuilder.Blazor.Components.FormControls;
+
+namespace CodeSkwelaFormBuilder.Blazor.Shared.Models
 {
     public class TextInputParametersEventArgs
     {
-        //public Guid FormControlId { get; set; }
-        public Dictionary<string, object> Parameters { get; set; }
+        public FormControl? ControlData { get; set; }
+        public Guid ControlId { get; set; }
     }
 }
